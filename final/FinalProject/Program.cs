@@ -23,6 +23,7 @@ class Program : Form
     byte material = 1;
     public Program()
     {
+        // Initilizing the winforms
         this.FormBorderStyle = FormBorderStyle.None;
         this.WindowState = FormWindowState.Maximized;
         this.AutoScaleMode = AutoScaleMode.None;
@@ -104,6 +105,7 @@ class Program : Form
         }
         string keypressed = keyData.ToString();
         if(int.TryParse(keypressed[1].ToString(), out int key))
+            if(key >= 0 && key <= 5) // Cap the values to avoid errors
             material = (byte)key;
         return base.ProcessCmdKey(ref msg, keyData);
     }

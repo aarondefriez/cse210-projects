@@ -1,12 +1,12 @@
 using System.Drawing.Imaging;
 using System.Numerics;
+using System.Security.Principal;
 
 public class Grid
 {
-    ParticleRules[] rules = new ParticleRules[4];
+    ParticleRules[] rules = new ParticleRules[6];
     // 0,0 is top left to follow winform format
     public Particle[,] _grid;
-    public Particle[,] _grid1;
 
     Bitmap bitmap;
 
@@ -24,18 +24,20 @@ public class Grid
         {
             for(int y = 0; y < grid.GetLength(1); y++)
             {
-                grid[x,y] = new Particle(0);
+                grid[x,y] = new Particle(0); // Populate grid with air
             }
         }
         bitmap = new Bitmap(_grid.GetLength(0), _grid.GetLength(1), PixelFormat.Format32bppArgb);
     }
-
+    // Initilize rules for different particles in order
     public void InitializeRules()
     {
-        rules[0] = new EmptyRules();
-        rules[1] = new SandRules();
-        rules[2] = new EmptyRules();
-        rules[3] = new LiquidRules();
+        rules[0] = new EmptyRules(); // Air
+        rules[1] = new SandRules(); // Sand
+        rules[2] = new LiquidRules(); // Water
+        rules[3] = new GasRules(); // Gas
+        rules[4] = new SeedRules(); // Seed
+        rules[5] = new VineRules(); // Vine
     }
 
     public void Step()
@@ -45,7 +47,7 @@ public class Grid
         {
             for(int x = 0; x < _grid.GetLength(0); x++)
             {
-                byte material = _grid[x, y]._material;
+                byte material = _grid[x, y].GetMaterial();
                 rules[material].UpdateParticle(this, x, y);
             }
         }
@@ -54,12 +56,14 @@ public class Grid
         {
             for(int x = 0; x < _grid.GetLength(0); x++)
             {
-                if(_grid[x, y]._material == 1)
+                if(_grid[x, y].GetMaterial() != 0)
                 {
-                    Vector2 v = _grid[x, y].velocity;
-                    _grid[x, y].oldVelocity = _grid[x, y].velocity;
-                    _grid[x, y].velocity = Vector2.Zero;
-                    Swap(x, y, (int)v.X, (int)v.Y);
+                    ref Particle p = ref _grid[x, y];
+                    Vector2 v = p.velocity;
+                    if(Program.debug) // Used for debug
+                        p.oldVelocity = v;
+                    p.velocity = Vector2.Zero; // Clear velocity
+                    Swap(x, y, (int)v.X, (int)v.Y); // Swap pixels
                 }
             }
         }
@@ -85,9 +89,9 @@ public class Grid
         {
             for (int y = endY; y >= startY; y--)
             {
-                if (_grid[x, y]._material == 0)
+                if (_grid[x, y].GetMaterial() == 0) // Fill if its air
                     _grid[x, y] = new Particle(material);
-                else if(material == 0) // if eraesing
+                else if(material == 0) // if eraesing erase any pixel regardless of material
                     _grid[x, y] = new Particle(material);
             }
         }
@@ -96,7 +100,6 @@ public class Grid
     {
         int width = _grid.GetLength(0);
         int height = _grid.GetLength(1);
-
 
         BitmapData data = bitmap.LockBits(new Rectangle(0, 0, width, height),
                                         ImageLockMode.WriteOnly,
@@ -115,13 +118,14 @@ public class Grid
                     ptr[idx + 1] = (byte)((p._color >> 8) & 0xFF);  // G
                     ptr[idx + 2] = (byte)((p._color >> 16) & 0xFF); // R
                     ptr[idx + 3] = (byte)((p._color >> 24) & 0xFF); // A
-                    if (Program.debug && p._material!= 0)
+                    if (Program.debug && p.GetMaterial()!= 0)
                     {
                         byte xv = (byte)p.oldVelocity.X;
                         byte yv = (byte)p.oldVelocity.Y;
-                        ptr[idx + 0] = (byte)(xv * 5);       // B
-                        ptr[idx + 1] = (byte)(0xFF);  // G
-                        ptr[idx + 2] = (byte)(yv * 5); // R
+                        bool dir = p.GetEndBit();
+                        ptr[idx + 0] = (byte)(0xFF);       // B
+                        ptr[idx + 1] = (byte)(0x00);  // G
+                        ptr[idx + 2] = (byte)(dir ? 0x00: 0xFF); // R
                         ptr[idx + 3] = (byte)(0xFF); // A
                     }
                 }

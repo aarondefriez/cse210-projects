@@ -3,20 +3,20 @@ using System.Drawing.Design;
 using System.Numerics;
 using System.Reflection.Metadata;
 
-public class LiquidRules : ParticleRules
+public class GasRules : ParticleRules
 {
     private static readonly Random rng = new Random();
-    private int dispersionRate = 6;
+    private int dispersionRate = 3;
     const int DIR_BIT = 1; 
     public override void UpdateParticle(Grid grid, int x, int y)
     {
-        int below = y + 1;
+        int above = y - 1;
         ref Particle p = ref grid._grid[x,y];
         byte density = p.GetDensity();
         // Determine if density is lower
-        if(CheckDensity(grid, x, below, density))
+        if(CheckDensity(grid, x, above, density))
         {
-            p.velocity = new Vector2(0, rng.Next(2,5));
+            p.velocity = new Vector2(0, -rng.Next(1,3));
             p.velocity = CheckPath(grid, p.velocity, x, y, density);
             return;
         }
